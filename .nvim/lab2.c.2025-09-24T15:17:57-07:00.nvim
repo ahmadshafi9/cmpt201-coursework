@@ -1,0 +1,30 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+int main() {
+  char program_path[256];
+  printf("enter programs to run\n");
+
+  while (1) {
+    printf("> ");
+    if (fgets(program_path, sizeof(program_path), stdin) == NULL) {
+      break;
+    }
+    program_path[strcspn(program_path, "\n")] = 0;
+    if (strlen(program_path) == 0) {
+      continue;
+    }
+    pid_t pid = fork();
+    if (pid == 0) {
+      execl(program_path, program_path, NULL);
+
+    } else {
+      int status;
+      waitpid(pid, &status, 0);
+    }
+  }
+  return 0;
+}

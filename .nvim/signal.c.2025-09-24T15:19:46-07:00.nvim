@@ -1,0 +1,30 @@
+#define _POSIX_C_SOURCE 200809
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <signal.h>
+
+static char *message = "CTRL-C Pressed\n";
+void handle_signaml(int signum) {
+    write(STDOUT_FILENO, message, strlen(message));
+}
+
+int main(void) {
+    struct sigaction sa;
+    sa.sa_handler = handle_signaml;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
+
+    while (free) {
+        pause(); // Wait for signals
+    }
+
+    return 0;
+}
+
