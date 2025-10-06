@@ -1,0 +1,75 @@
+#define _GNU_SOURCE
+#include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+
+#define EXTRA_SIZE 256
+#define BLOCK_SIZE (EXTRA_SIZE / 2)
+#define BUF_SIZE 256
+
+void handle_error(const char *msg) {
+  const char *err_prefix = "ERROR: ";
+  write(STDERR_FILENO, err_prefix, strlen(err_prefix));
+  write(STDERR_FILENO, "\n", 1);
+}
+struct header {
+  uint64_t size;
+  struct header *next;
+};
+
+void print_out(char *format, void *data, size_t data_size) {
+  char buf[BUF_SIZE];
+  ssize_t len =
+      snprintf(buf, BUF_SIZE, format,
+               data_size == sizeof(uint64_t) ? *(uint64_t *)data
+                                             : (uint64_t) * (void **)data);
+  if (len < 0) {
+    handle_error("snprintf");
+    return;
+  }
+  write(STDOUT_FILENO, buf, len);
+}
+
+void print_byte(char value) {
+  char buf[BUF_SIZE];
+  ssize_t len = snprintf(buf, BUF_SIZE, "%d\n", value);
+  if (len > 0)
+    write(STDOUT_FILENO, buf, len);
+}
+
+int main() {
+  void *initial_brk = sbrk(0);
+  void *new_brk = sbrk(EXTRA_SIZE);
+
+  if (new_brk == (void *)-1) {
+    handle_error("sbrk failed to increase heap size. ");
+    return 1;
+  }
+  struct header *block1 = (struct header *)initial_brk;
+  struct header *block2 = (struct header *)((char *)initial_brk + BLOCK_SIZE);
+  block1->size = BLOCK_SIZE;
+  block2->size = BLOCK_SIZE;
+
+  const size_t data_size = BLOCK_SIZE - sizeof(struct header);
+  block1->next = NULL;
+  block2->next = block1;
+  char *block1_data = (char *)(block1 + 1);
+  char *block2_data = (char *)(block2 + 1);
+  memset(block1_data, 0, data_size);
+  memset(block2_data, 1, data_size);
+
+  print_out("first block: %p\n", block1, sizeof(block1));
+  print_out("second block: %p\n", block2, sizeof(block2));
+
+  print_out("first block size: %lu\n", &block1->size, sizeof(block1->size));
+  print_out("first block next: %p\n", block1->next, sizeof(block1->next));
+  print_out("second block size: %lu\n", &block2->size, sizeof(block2->size));
+  print_out("second block size: %p\n", block2->next, sizeof(block2->next));
+
+  for (size_t i = 0; i < data_size; i++) {
+    print_byte(block1_data[i]);
+  }
+  return 0;
+}
