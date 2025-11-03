@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h> // Include string.h for strcmp if you want to use it for 'end' check
+#include <string.h> 
 
 #define MAX_INPUT 100
 
