@@ -1,0 +1,217 @@
+, word_count_entry_t *b);
+void print_counts(count_map_t);
+void delete_table(count_map_t);
+static void *counter_thread_func(void *);
+static void add_word_counts_in_chunk(count_map_t *map, word_t *words,
+                                         size_t num_words, pthread_mutex_t *lock);
+static count_map_t count_words_seq(word_t *words, size_t num_words);
+static count_map_t count_words_parallel(word_t *words, size_t num_words);
+
+// ---------------- Task 4 ----------------
+// // Thread-safe function to add words into shared hash table
+// static void add_word_counts_in_chunk(count_map_t *map, word_t *words,
+//                                      size_t num_words, pthread_mutex_t *lock) {
+//                                        for (size_t i = 0; i < num_words; i++) {
+//                                            if (lock)
+//                                                  pthread_mutex_lock(lock);
+//
+//                                                      word_count_entry_t *w = NULL;
+//                                                          HASH_FIND_STR(*map, words[i], w);
+//
+//                                                              if (w) {
+//                                                                    w->count++;
+//                                                                        } else {
+//                                                                              w =
+//                                                                              create_entry(words[i],
+//                                                                              1);
+//                                                                                    HASH_ADD_STR(*map,
+//                                                                                    word, w);
+//                                                                                        }
+//
+//                                                                                            if
+//                                                                                            (lock)
+//                                                                                                  pthread_mutex_unlock(lock);
+//                                                                                                    }
+//                                                                                                    }
+//
+//                                                                                                    //
+//                                                                                                    Thread
+//                                                                                                    function
+//                                                                                                    static
+//                                                                                                    void
+//                                                                                                    *counter_thread_func(void
+//                                                                                                    *param)
+//                                                                                                    {
+//                                                                                                      count_thread_args_t
+//                                                                                                      *args
+//                                                                                                      =
+//                                                                                                      (count_thread_args_t
+//                                                                                                      *)param;
+//                                                                                                        add_word_counts_in_chunk(args->map,
+//                                                                                                        args->words,
+//                                                                                                        args->num_words,
+//                                                                                                        args->lock);
+//                                                                                                          return
+//                                                                                                          NULL;
+//                                                                                                          }
+//
+//                                                                                                          //
+//                                                                                                          ----------------
+//                                                                                                          Task
+//                                                                                                          2
+//                                                                                                          ----------------
+//                                                                                                          //
+//                                                                                                          Parallel
+//                                                                                                          word
+//                                                                                                          counting
+//                                                                                                          implementation
+//                                                                                                          static
+//                                                                                                          count_map_t
+//                                                                                                          count_words_parallel(word_t
+//                                                                                                          *words,
+//                                                                                                          size_t
+//                                                                                                          num_words)
+//                                                                                                          {
+//                                                                                                            count_map_t
+//                                                                                                            map
+//                                                                                                            =
+//                                                                                                            NULL;
+//                                                                                                              pthread_mutex_t
+//                                                                                                              count_mutex;
+//                                                                                                                pthread_t
+//                                                                                                                threads[THREAD_COUNT];
+//                                                                                                                  count_thread_args_t
+//                                                                                                                  *thread// Lab 8 - Sorting & Counting Words in Threads using uthash
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <uthash.h>
+
+#define THREAD_COUNT 3
+typedef const char *word_t;
+
+// Each hash table entry
+typedef struct {
+  word_t word;
+  size_t count;
+  UT_hash_handle hh;
+} word_count_entry_t;
+
+typedef word_count_entry_t *count_map_t;
+
+// Thread argument structure
+typedef struct {
+  count_map_t *map;
+  word_t *words;
+  size_t num_words;
+  pthread_mutex_t *lock;
+} count_thread_args_t;
+
+// Function declarations
+word_count_entry_t *create_entry(word_t, size_t);
+count_thread_args_t *pack_args(count_map_t *map, word_t *words,
+                               size_t num_words, pthread_mutex_t *lock);
+int sort_func(word_count_es_args[THREAD_COUNT];
+
+  pthread_mutex_init(&count_mutex, NULL);
+
+  size_t chunk_size = num_words / THREAD_COUNT;
+
+  // Launch threads
+  for (size_t i = 0; i < THREAD_COUNT; i++) {
+    word_t *thread_arg_words = words + i * chunk_size;
+    size_t thread_arg_num_words =
+        chunk_size + (i == THREAD_COUNT - 1 ? num_words % THREAD_COUNT : 0);
+
+    threads_args[i] = pack_args(&map, thread_arg_words,
+                                thread_arg_num_words, &count_mutex);
+
+    pthread_create(&threads[i], NULL, counter_thread_func, threads_args[i]);
+  }
+
+  // Wait for threads to finish
+  for (size_t i = 0; i < THREAD_COUNT; i++) {
+    pthread_join(threads[i], NULL);
+    free(threads_args[i]);
+  }
+
+  pthread_mutex_destroy(&count_mutex);
+  return map;
+}
+
+// Sequential version
+static count_map_t count_words_seq(word_t *words, size_t num_words) {
+  word_count_entry_t *map = NULL;
+  add_word_counts_in_chunk(&map, words, num_words, NULL);
+  return map;
+}
+
+// Comparison function for uthash sort
+int sort_func(word_count_entry_t *a, word_count_entry_t *b) {
+  return strcmp(a->word, b->word);
+}
+
+// Create a new hash entry
+word_count_entry_t *create_entry(word_t word, size_t count) {
+  word_count_entry_t *ptr = malloc(sizeof(word_count_entry_t));
+  ptr->word = word;
+  ptr->count = count;
+  return ptr;
+}
+
+// Print the hash table
+void print_counts(count_map_t word_map) {
+  printf("%-32s%-10s\n", "Word", "Count");
+  word_count_entry_t *current, *tmp;
+  HASH_ITER(hh, word_map, current, tmp) {
+    printf("%-32s%-10zu\n", current->word, current->count);
+  }
+}
+
+// Free memory
+void delete_table(count_map_t word_map) {
+  word_count_entry_t *current, *tmp;
+  HASH_ITER(hh, word_map, current, tmp) {
+    HASH_DEL(word_map, current);
+    free(current);
+  }
+}
+
+// Helper for packing arguments
+count_thread_args_t *pack_args(count_map_t *map, word_t *words,
+                               size_t num_words, pthread_mutex_t *lock) {
+  count_thread_args_t *args = malloc(sizeof(count_thread_args_t));
+  args->map = map;
+  args->words = words;
+  args->num_words = num_words;
+  args->lock = lock;
+  return args;
+}
+
+// ---------------- Main ----------------
+int main(void) {
+  word_t words_in[13] = {"the",  "quick", "brown", "fox", "jumps",
+                         "over", "the",   "lazy",  "dog", "the",
+                         "the",  "fox",   "brown"};
+  const size_t words_in_len = 13;
+  count_map_t word_map = NULL;
+
+  // --------- Task 2 ---------
+  // Comment out the sequential version
+  // word_map = count_words_seq(words_in, words_in_len);
+  word_map = count_words_parallel(words_in, words_in_len);
+
+  // --------- Task 1 ---------
+  if (word_map) {
+    HASH_SORT(word_map, sort_func);
+    print_counts(word_map);
+  }
+
+  if (word_map) {
+    delete_table(word_map);
+  }
+
+  return 0;
+}
+
